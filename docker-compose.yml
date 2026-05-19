@@ -1,0 +1,24 @@
+services:
+  web:
+    image: odoo:19
+    # We add workers to enable the Gevent/WebSocket server
+    # --proxy-mode is essential for Odoo to handle headers correctly
+    command: odoo --workers=2 --gevent-port=8072 --proxy-mode --log-level=info
+    depends_on:
+      - mydb
+    ports:
+      - "8069:8069" # Standard traffic
+      - "8072:8072" # WebSocket/Bus traffic (CRITICAL for UI updates)
+    environment:
+      - HOST=mydb
+      - USER=odoo
+      - PASSWORD=myodoo
+    volumes:
+      - ./src:/mnt/extra-addons
+
+  mydb:
+    image: postgres:15 # Specifying a version is safer
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=myodoo
+      - POSTGRES_USER=odoo
