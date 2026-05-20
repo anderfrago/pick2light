@@ -1,14 +1,17 @@
-from odoo import models, fields
+from odoo import models, fields, api
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    # These names must match the XML 'name' attribute exactly
+    # Los nombres de los campos DEBEN coincidir exactamente con tu XML
     picksmart_router_ip = fields.Char(
-        string='Router IP', 
-        config_parameter='picksmart.router_ip'
+        string="Picksmart Router IP",
+        config_parameter='picksmart.router_ip', # Guarda automáticamente en ir.config_parameter
+        default='192.168.1.200'
     )
+    
     picksmart_style_id = fields.Char(
-        string='Style ID', 
-        config_parameter='picksmart.style_id'
+        string="Picksmart Style ID",
+        config_parameter='picksmart.style_id', # Guarda automáticamente en ir.config_parameter
+        default='50'
     )
