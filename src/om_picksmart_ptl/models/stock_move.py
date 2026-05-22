@@ -1,59 +1,91 @@
-from odoo import models, fields, api
 import logging
+from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
+
+class StockPicking(models.Model):
+    _inherit = 'stock.picking'
+
+    def button_validate(self):
+        # Evitamos interceptar si la orden ya viene procesada por el hardware
+        if self.env.context.get('is_picksmart_callback'):
+            return super(StockPicking, self).button_validate()
+
+        # -------------------------------------------------------------------------
+        # 1. FLUJO DE ENTRADAS (RECEPCIONES)
+        # -------------------------------------------------------------------------
+        if self.picking_type_code == 'incoming':
+            _logger.error("!!! INTERCEPCIÓN WEB -> Preparando Entrada Persistente (Negativa).")
+            for move in self.move_ids:
+                template = move.product_id.product_tmpl_id
+                if template and template.tag_mac:
+                    qty = move.product_uom_qty
+                    
+                    # Escritura directa en SQL para saltar el Rollback del UserError
+                    self.env.cr.execute(
+                        "UPDATE product_template SET pickup_quantity = %s WHERE id = %s",
+                        (-qty, template.id)
+                    )
+                    self.env.cr.commit()
+                    template.invalidate_recordset(['pickup_quantity'])
+                    
+                    try:
+                        template._update_picksmart_tag(led_rgb="0000ff") # Azul para Entradas
+                    except Exception as e:
+                        _logger.error("!!! Error HTTP Tag Entrada: %s", str(e))
+
+            raise UserError("Operación de ENTRADA enviada al Hardware. Confirme pulsando el Botón 0 en la etiqueta.")
+
+        # -------------------------------------------------------------------------
+        # 2. FLUJO DE SALIDAS (ENTREGAS / PICKING DE PEDIDOS)
+        # -------------------------------------------------------------------------
+        elif self.picking_type_code == 'outgoing':
+            _logger.error("!!! INTERCEPCIÓN WEB -> Preparando Salida Persistente (Positiva).")
+            for move in self.move_ids:
+                template = move.product_id.product_tmpl_id
+                if template and template.tag_mac:
+                    qty = move.product_uom_qty
+                    
+                    # Para las salidas guardamos el valor POSITIVO puro en la base de datos
+                    self.env.cr.execute(
+                        "UPDATE product_template SET pickup_quantity = %s WHERE id = %s",
+                        (qty, template.id)
+                    )
+                    self.env.cr.commit()
+                    template.invalidate_recordset(['pickup_quantity'])
+                    
+                    try:
+                        template._update_picksmart_tag(led_rgb="00ff00") # Verde (o "ff0000" Rojo) para Salidas
+                    except Exception as e:
+                        _logger.error("!!! Error HTTP Tag Salida: %s", str(e))
+
+            raise UserError("Operación de SALIDA enviada al Hardware. Retire el producto y confirme pulsando el Botón 0.")
+        
+        return super(StockPicking, self).button_validate()
+
 
 class StockMove(models.Model):
     _inherit = 'stock.move'
 
-    def write(self, vals):
-        res = super(StockMove, self).write(vals)
-        
-        
-        if 'state' in vals:
-            # SI EL ESTADO NUEVO ES 'DONE' (O CANCEL), SIGNIFICA QUE ALGUIEN 
-            # LO HA VALIDADO DESDE EL ORDENADOR. NO QUEREMOS QUE ENVIÉ NADA AL HARDWARE.
-            if vals.get('state') in ['done', 'cancel']:
-                return res # Salimos del código y que Odoo haga su inventario en silencio.
+    def _action_assign(self, force_qty=False):
+        """ Salvavidas por si el usuario pulsa 'Comprobar Disponibilidad' en la web """
+        res = super(StockMove, self)._action_assign(force_qty=force_qty)
+        if self.env.context.get('is_picksmart_callback'):
+            return res
 
-
-            moves_with_picking = self.filtered(lambda m: m.picking_id)
-            if not moves_with_picking:
-                return res
+        for move in self:
+            template = move.product_id.product_tmpl_id
+            if template and template.tag_mac and template.pickup_quantity == 0.0:
+                qty = move.product_uom_qty
                 
-            templates_to_update = moves_with_picking.mapped('product_id.product_tmpl_id')
-            
-            # -------------------------------------------------------------------------
-            # DETECCIÓN ENTRE WORKERS: Descartamos la caché local de Odoo y leemos
-            # directamente el valor real guardado en las tablas de PostgreSQL.
-            # -------------------------------------------------------------------------
-            templates_to_update.invalidate_recordset(['is_hardware_updating'])
-            
-            for template in templates_to_update:
-                if template.is_hardware_updating:
-                    _logger.error("!!! StockMove: Bloqueo inter-proceso detectado (Worker ocupado con botón 0). Abortando señal verde.")
-                    return res
-
-            valid_states = ['confirmed', 'assigned', 'partially_available']
-            
-            for template in templates_to_update:
-                if template.tag_mac:
-                    outbound = 0.0
-                    inbound = 0.0
-                    for variant in template.product_variant_ids:
-                        m_active = variant.stock_move_ids.filtered(lambda m: m.state in valid_states and m.picking_id)
-                        outbound += sum(m_active.filtered(lambda m: m.picking_code == 'outgoing').mapped('product_uom_qty'))
-                        inbound += sum(m_active.filtered(lambda m: m.picking_code == 'incoming').mapped('product_uom_qty'))
+                if move.picking_id.picking_type_code == 'incoming':
+                    template.with_context(is_picksmart_callback=True).write({'pickup_quantity': -qty})
+                    template.invalidate_recordset(['pickup_quantity'])
+                    template._update_picksmart_tag(led_rgb="0000ff")
                     
-                    template_ctx = template.with_context(is_picksmart_callback=True)
-                    
-                    if outbound > 0:
-                        template_ctx.pickup_quantity = outbound
-                    elif inbound > 0:
-                        template_ctx.pickup_quantity = -inbound
-                    else:
-                        template_ctx.pickup_quantity = 0.0
-                        
-                    _logger.error("!!! StockMove: Nueva orden detectada en Odoo. Inicializando pantalla en verde.")
-                    template_ctx._update_picksmart_tag(led_rgb="00ff00")
+                elif move.picking_id.picking_type_code == 'outgoing':
+                    template.with_context(is_picksmart_callback=True).write({'pickup_quantity': qty})
+                    template.invalidate_recordset(['pickup_quantity'])
+                    template._update_picksmart_tag(led_rgb="00ff00")
         return res

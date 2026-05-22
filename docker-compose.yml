@@ -1,14 +1,17 @@
 services:
   web:
     image: odoo:19
-    # We add workers to enable the Gevent/WebSocket server
-    # --proxy-mode is essential for Odoo to handle headers correctly
-    command: odoo --workers=2 --gevent-port=8072 --proxy-mode --log-level=info
+    # Eliminamos --workers y --gevent-port para operar en modo monotarea seguro.
+    # Mantenemos límites altos de tiempo para evitar los molestos desbordamientos de CPU de la Pi.
+    command: >
+      odoo --log-level=warn 
+      --limit-time-cpu=900
+      --limit-time-real=1800
+      --max-cron-threads=0
     depends_on:
       - mydb
     ports:
-      - "8069:8069" # Standard traffic
-      - "8072:8072" # WebSocket/Bus traffic (CRITICAL for UI updates)
+      - "8069:8069" # Todo el tráfico (interfaz y hardware) fluye unificado por aquí
     environment:
       - HOST=mydb
       - USER=odoo
@@ -17,8 +20,10 @@ services:
       - ./src:/mnt/extra-addons
 
   mydb:
-    image: postgres:15 # Specifying a version is safer
+    image: postgres:15
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=myodoo
       - POSTGRES_USER=odoo
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data  # <--- ¡Añade esto para no perder tus datos al apagar la Pi!
