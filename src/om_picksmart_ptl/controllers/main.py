@@ -29,80 +29,84 @@ class PicksmartController(http.Controller):
             product_ctx = product.with_context(is_picksmart_callback=True)
   
             if button_id == 0:
-                _logger.error("!!! Botón 0 -> Solicitud de confirmación de operación recibida.")
+                _logger.error("!!! Botón 0 -> Solicitud de confirmación de operación recibida (Simple/Lote).")
 
-                # 1. Limpiamos la caché de Odoo en la Raspberry para leer datos frescos de Postgres
+                # 1. Rompemos las cachés para leer el consolidado real guardado en Postgres
                 product.invalidate_recordset(['pickup_quantity', 'qty_available'])
                 
-                # -------------------------------------------------------------------------
-                # ¡LA CLAVE DE LA ARITMÉTICA!: Capturamos el valor original con su SIGNO real
-                # Si en Odoo el picking está en -5.0 (Recepción), sign_value será -5.0.
-                # Si en Odoo el picking está en 5.0 (Entrega), sign_value será 5.0.
-                # -------------------------------------------------------------------------
+                # Capturamos el valor original calculado (sea de albarán único o de suma de lotes)
                 sign_value = product.pickup_quantity
-                _logger.error("!!! Botón 0 -> Valor original guardado en el picking de Odoo: %s", sign_value)
+                if sign_value == 0.0:
+                    _logger.error("!!! Botón 0 -> El picking ya vale 0. Nada que procesar.")
+                    return request.make_response(json.dumps({"status": "success"}), headers={'Content-Type': 'application/json'})
 
-                # 2. Buscamos el albarán activo (sea entrante o saliente)
-                move = request.env['stock.move'].sudo().search([
-                    ('product_id', 'in', product.product_variant_ids.ids),
-                    ('state', 'in', ['confirmed', 'assigned', 'partially_available'])
-                ], order='create_date asc', limit=1)
-                
-                # Definimos la cantidad absoluta (siempre positiva) para las líneas de movimiento de Odoo
-                qty_to_process = move.product_uom_qty if move else abs(sign_value)
-                _logger.error("!!! Botón 0 -> Cantidad neta para el documento de Odoo: %s", qty_to_process)
-
-                # 3. Ponemos el picking a 0 en Odoo para liberar la pantalla física
-                product_ctx.write({'pickup_quantity': 0.0})
-                request.env.cr.commit() 
-                
-                # Determinar si es una salida (Entrega) basándonos en el signo original del picking
-                # Si era positivo (> 0), es una salida. Si era negativo (< 0), es una entrada.
+                qty_to_process = abs(sign_value)
                 is_outgoing = (sign_value > 0)
 
-                if move:
-                    picking = move.picking_id
+                _logger.error("!!! Botón 0 -> Procesando cantidad agrupada total: %s | ¿Es salida?: %s", qty_to_process, is_outgoing)
+
+                # 2. Ponemos el picking a 0 en Odoo inmediatamente para liberar el hardware
+                product_ctx.write({'pickup_quantity': 0.0})
+                request.env.cr.commit() 
+
+                # 3. Buscamos TODOS los movimientos pendientes en lote u individuales de este producto
+                moves = request.env['stock.move'].sudo().search([
+                    ('product_id', 'in', product.product_variant_ids.ids),
+                    ('state', 'in', ['confirmed', 'assigned', 'partially_available'])
+                ], order='create_date asc')
+
+                if moves:
+                    # Agrupamos los pickings padres afectados para validarlos al final
+                    pickings_to_validate = moves.mapped('picking_id')
+                    batches_to_validate = pickings_to_validate.mapped('batch_id')
+
                     try:
-                        # Aseguramos que existan las líneas físicas del albarán (move lines)
-                        if not move.move_line_ids:
-                            request.env['stock.move.line'].sudo().create({
-                                'move_id': move.id,
-                                'picking_id': picking.id,
-                                'product_id': move.product_id.id,
-                                'product_uom_id': move.product_uom.id,
-                                'location_id': move.location_id.id,
-                                'location_dest_id': move.location_dest_id.id,
-                                'quantity': qty_to_process,
-                            })
+                        # Aseguramos cantidades en todas las líneas de movimiento abiertas
+                        for move in moves:
+                            if not move.move_line_ids:
+                                request.env['stock.move.line'].sudo().create({
+                                    'move_id': move.id,
+                                    'picking_id': move.picking_id.id,
+                                    'product_id': move.product_id.id,
+                                    'product_uom_id': move.product_uom.id,
+                                    'location_id': move.location_id.id,
+                                    'location_dest_id': move.location_dest_id.id,
+                                    'quantity': move.product_uom_qty,
+                                })
+                            else:
+                                for line in move.move_line_ids:
+                                    line.quantity = move.product_uom_qty
+
+                        # VALIDACIÓN EN CASCADA: 
+                        # Si los albaranes pertenecen a lotes/olas, validamos el lote contenedor padre.
+                        if batches_to_validate:
+                            for batch in batches_to_validate:
+                                _logger.error("!!! Botón 0 -> Validando Lote/Ola contenedor nativo: %s", batch.name)
+                                batch.with_context(is_picksmart_callback=True).action_done()
                         else:
-                            for line in move.move_line_ids:
-                                line.quantity = qty_to_process
-                        
-                        # VALIDACIÓN FINAL DE ODOO (Nativa: Suma entradas / Resta salidas)
-                        _logger.error("!!! Botón 0 -> Ejecutando button_validate() para %s", picking.name)
-                        picking.with_context(is_picksmart_callback=True).button_validate()
-                        
-                        # Forzamos la limpieza de caché total para asimilar el cambio nativo
+                            # Si eran albaranes simples libres independientes
+                            for picking in pickings_to_validate:
+                                _logger.error("!!! Botón 0 -> Validando Albarán individual nativo: %s", picking.name)
+                                picking.with_context(is_picksmart_callback=True).button_validate()
+
+                        # Forzamos relectura limpia y sincronizamos el stock
                         request.env.invalidate_all()
-                        
-                        # LLAMADA FORZADA SEGURA:
-                        # Mandamos a regularizar el stock indicándole explícitamente si fue una salida o entrada.
-                        # Pasamos is_albaran=False para que _adjust_stock aplique la matemática exacta por si Odoo 
-                        # tarda en hacer el commit en este hilo.
-                        self._adjust_stock(product, qty_to_process, is_albaran=False, is_outgoing=is_outgoing)
+                        self._adjust_stock(product, qty_to_process, is_albaran=True, is_outgoing=is_outgoing)
 
                     except Exception as e:
-                        _logger.error("!!! Error crítico validando albarán hardware, aplicando salvavidas manual: %s", str(e))
-                        picking.write({'state': 'done'})
-                        move.write({'state': 'done'})
+                        _logger.error("!!! Error validando flujo agrupado, aplicando salvavidas matemático: %s", str(e))
+                        # Forzamos cierre de estados por seguridad
+                        moves.write({'state': 'done'})
+                        pickings_to_validate.write({'state': 'done'})
+                        if batches_to_validate:
+                            batches_to_validate.write({'state': 'done'})
                         request.env.cr.commit()
-                        
-                        if qty_to_process > 0:
-                            self._adjust_stock(product, qty_to_process, is_albaran=False, is_outgoing=is_outgoing)
-                else:
-                    # MODO MANUAL PURO (Pulsaciones libres en almacén)
-                    if qty_to_process > 0:
+
+                        # El salvavidas inyecta la cantidad consolidada exacta con el signo correspondiente
                         self._adjust_stock(product, qty_to_process, is_albaran=False, is_outgoing=is_outgoing)
+                else:
+                    # MODO MANUAL PURO
+                    self._adjust_stock(product, qty_to_process, is_albaran=False, is_outgoing=is_outgoing)
             elif button_id == 1:
                 _logger.error("!!! Hardware -> Modificando stock en +1.0")
                 self._adjust_stock(product, 1.0)
