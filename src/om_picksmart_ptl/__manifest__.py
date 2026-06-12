@@ -3,7 +3,11 @@
     'version': '1.0',
     'category': 'Inventory',
     'summary': 'Sync Odoo Stock with Picksmart V24 Tags',
-    'depends': ['stock'],
+    'depends': [
+        'base', 
+        'stock', 
+        'stock_picking_batch'  
+    ],
     'author': "Ander Frago Landa",
     'data': [
         'security/ir.model.access.csv',
