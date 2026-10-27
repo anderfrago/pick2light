@@ -17,6 +17,15 @@ This Odoo 19 module integrates Odoo's inventory/stock system with the **Picksmar
 
 ---
 
+## Documentation
+
+- [User manual](docs/index.md): simple, step-by-step guide for FP Básica students.
+- [Administration manual](docs/admin.md): installation, configuration, networking, Docker, maintenance, and troubleshooting.
+
+The `docs` directory is ready to be used as the publishing source for GitHub Pages.
+
+---
+
 ## Repository Structure
 
 ```text

@@ -1,0 +1,7 @@
+title: Pick-to-Light con Odoo
+description: Manual de usuario y administración del sistema Picksmart PTL
+lang: es
+theme: minima
+header_pages:
+  - index.md
+  - admin.md
