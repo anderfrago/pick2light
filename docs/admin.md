@@ -1,12 +1,31 @@
+---
+layout: default
+title: Administración de Pick 2 Light
+description: Instalación, configuración y mantenimiento del laboratorio
+page_class: admin-manual
+permalink: /admin.html
+---
+
 # Manual de instalación y uso — Picksmart PTL para Odoo 19
 
-[← Volver al manual del alumnado](index.md)
+[Volver al manual del alumnado]({{ '/' | relative_url }})
 
 > Este documento está dirigido al profesorado y a las personas responsables de instalar, configurar y mantener el sistema.
 
 ## 1. Objetivo
 
 Este proyecto instala en Odoo 19 el módulo **Picksmart PTL Integration** (`om_picksmart_ptl`). El módulo conecta los productos y las operaciones de inventario de Odoo con tags Picksmart V24 mediante un router Picksmart.
+
+El desarrollo forma parte de un laboratorio formativo financiado por el proyecto europeo [EE4M — Engineering Excellence for the Mobility Value Chain](https://ee4m.eu). El proyecto EE4M está cofinanciado por el programa ERASMUS-EDU-2022-PEX-COVE mediante el acuerdo de subvención n.º `101104549`.
+
+### Relación con EE4M
+
+EE4M trabaja en la mejora de la educación y la formación para la cadena de valor de la movilidad. El proyecto presta especial atención a las competencias digitales, la Industria 4.0 y la sostenibilidad. Este desarrollo se utiliza como laboratorio práctico de logística digital para conectar la gestión de inventario, los dispositivos IoT y el trabajo de almacén.
+
+Recursos oficiales:
+
+- [Sitio web del proyecto EE4M](https://ee4m.eu).
+- [Cursos y laboratorios regionales de EE4M](https://e-learning.ee4m.eu/).
 
 La comunicación es bidireccional:
 

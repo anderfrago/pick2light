@@ -2,6 +2,15 @@
 
 This Odoo 19 module integrates Odoo's inventory/stock system with the **Picksmart Pick-to-Light (PTL)** V24 tags/routers. It allows warehouse operators to associate Odoo products with physical Picksmart tags, direct pick operations via LED indicators/quantities on the tag, and dynamically update Odoo stock levels when buttons on the tag are pressed.
 
+## EE4M laboratory
+
+This development is part of an educational laboratory funded by
+[EE4M — Engineering Excellence for the Mobility Value Chain](https://ee4m.eu).
+The EE4M project is co-funded by the European
+`ERASMUS-EDU-2022-PEX-COVE` programme under grant agreement No. `101104549`.
+
+Funded by the European Union. The views and opinions expressed are those of the authors only and do not necessarily reflect those of the European Union or Erasmus+. Neither the European Union nor the granting authority can be held responsible for them.
+
 ---
 
 ## Features
@@ -21,6 +30,7 @@ This Odoo 19 module integrates Odoo's inventory/stock system with the **Picksmar
 
 - [User manual](docs/index.md): simple, step-by-step guide for FP Básica students.
 - [Administration manual](docs/admin.md): installation, configuration, networking, Docker, maintenance, and troubleshooting.
+- [EE4M project website](https://ee4m.eu): information about the European project that funds the laboratory.
 
 The `docs` directory is ready to be used as the publishing source for GitHub Pages.
 

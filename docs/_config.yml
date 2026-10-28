@@ -1,7 +1,9 @@
 title: Pick-to-Light con Odoo
-description: Manual de usuario y administración del sistema Picksmart PTL
+description: Laboratorio formativo Pick-to-Light desarrollado en el marco del proyecto europeo EE4M
 lang: es
 theme: minima
+markdown: kramdown
+repository: Pick-to-Light
 header_pages:
   - index.md
   - admin.md

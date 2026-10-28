@@ -1,8 +1,25 @@
+---
+layout: default
+title: Pick 2 Light
+description: Manual de uso para alumnado de FP Básica
+page_class: student-manual
+hero: true
+permalink: /
+---
+
 # Manual de uso de Pick-to-Light
 
 Este manual explica cómo utilizar **Odoo Inventario** con los tags luminosos Pick-to-Light. Está pensado para alumnado de FP Básica y se puede seguir paso a paso.
 
-> Para instalar, configurar o reparar el sistema, consulta el [manual de administración](admin.md).
+> Este desarrollo forma parte de un laboratorio formativo financiado por el proyecto europeo [EE4M — Engineering Excellence for the Mobility Value Chain](https://ee4m.eu). EE4M impulsa la formación relacionada con la producción, la logística, la digitalización y la sostenibilidad en la cadena de valor de la movilidad.
+
+Para instalar, configurar o reparar el sistema, consulta el [manual de administración](admin.html).
+
+## El proyecto EE4M
+
+[EE4M](https://ee4m.eu) significa **Engineering Excellence for the Mobility Value Chain**. El proyecto reúne centros de formación, universidades, empresas y entidades de investigación para mejorar la formación relacionada con la cadena de valor de la movilidad.
+
+Este laboratorio permite practicar competencias de Industria 4.0 mediante un caso real de logística: Odoo organiza el inventario y los tags luminosos ayudan a realizar recepciones y entregas. El proyecto está cofinanciado por el programa europeo ERASMUS-EDU-2022-PEX-COVE, acuerdo de subvención n.º `101104549`.
 
 ## 1. ¿Qué hace el sistema?
 
@@ -237,4 +254,4 @@ Si todas las respuestas son afirmativas, la operación está terminada.
 
 ---
 
-[Manual técnico y de administración →](admin.md)
+[Manual técnico y de administración](admin.html)
