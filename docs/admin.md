@@ -250,7 +250,7 @@ Al guardar, Odoo envía al router una trama semejante a esta:
 1. Crear y confirmar una recepción o entrega en Odoo.
 2. Pulsar **Validar** en el albarán.
 3. Si el albarán contiene productos con tag, Odoo no completa todavía la operación: envía la cantidad al hardware y muestra el aviso **Operación individual ... enviada al Hardware**.
-4. El operario realiza el movimiento físico y pulsa el botón físico configurado para que el router envíe `result = 0`.
+4. El operario realiza el movimiento físico y pulsa el botón inferior, que envía `result = 0`.
 5. El router llama al callback de Odoo.
 6. Odoo valida el albarán, recalcula el stock, pone la cantidad pendiente a cero y apaga el LED.
 
@@ -272,13 +272,13 @@ Flujo recomendado:
 2. Confirmar que cada producto Picksmart tiene una MAC configurada.
 3. Preparar las cantidades recibidas.
 4. Pulsar **Validar**. El módulo envía la operación al tag y deja pendiente la confirmación física.
-5. Pulsar el botón físico mapeado a `result = 0`. Odoo termina la recepción, actualiza el stock y apaga el LED.
+5. Pulsar el botón inferior (`result = 0`). Odoo termina la recepción, actualiza el stock y apaga el LED.
 
 En una recepción, el tag muestra la cantidad pendiente con signo negativo y mantiene el LED **azul** parpadeando. Cuando se haya colocado físicamente toda la mercancía, enviar la confirmación `result = 0`:
 
 ![Mockup del tag real durante una recepción: LED azul](images/13-mockup-tag-recepcion-real.png)
 
-> **Recepción:** azul significa entrada pendiente. El callback `result = 0` confirma el total mostrado; después de procesarlo, Odoo envía `000000` y el LED se apaga. El botón inferior señalado en el mockup es ilustrativo hasta verificar el mapeo del router.
+> **Recepción:** azul significa entrada pendiente. El botón inferior envía `result = 0` y confirma el total mostrado. Después de procesarlo, Odoo envía `000000` y el LED se apaga.
 
 #### Entregas
 
@@ -296,13 +296,13 @@ Flujo recomendado:
 2. Comprobar que el producto está disponible y que la cantidad preparada es correcta.
 3. Pulsar **Validar**. El tag muestra la cantidad de salida y enciende el LED verde.
 4. Realizar la recogida física indicada.
-5. Pulsar el botón físico mapeado a `result = 0`. Odoo valida la entrega, descuenta el stock y pone la cantidad pendiente a cero.
+5. Pulsar el botón inferior (`result = 0`). Odoo valida la entrega, descuenta el stock y pone la cantidad pendiente a cero.
 
 En una entrega, el tag muestra una cantidad positiva y mantiene el LED **verde** parpadeando. Cuando se haya retirado físicamente toda la cantidad indicada, enviar la confirmación `result = 0`:
 
 ![Mockup del tag real durante una entrega: LED verde](images/14-mockup-tag-entrega-real.png)
 
-> **Entrega:** verde significa salida pendiente. El callback `result = 0` confirma la recogida; después de procesarlo, Odoo apaga el LED. El botón inferior señalado en el mockup es ilustrativo hasta verificar el mapeo del router.
+> **Entrega:** verde significa salida pendiente. El botón inferior envía `result = 0` y confirma la recogida. Después de procesarlo, Odoo apaga el LED.
 
 ### 6.3. Traslado por lote u ola con varios productos
 
@@ -329,7 +329,7 @@ Flujo recomendado:
 4. Confirmar que cada producto dispone de una MAC diferente y de su tag físico.
 5. Pulsar **Validar**. El módulo agrupa las cantidades por producto y envía un total distinto a cada tag.
 6. Procesar físicamente el total mostrado en cada tag.
-7. Confirmar cada tag mediante el control físico que el router tenga mapeado a `result = 0`.
+7. Confirmar cada tag mediante el botón inferior (`result = 0`).
 8. Odoo intenta validar el lote contenedor y sus operaciones pendientes.
 
 Ejemplo: si el lote contiene tres albaranes con `10 + 20 + 5` unidades de **Camisa hombre** y otros movimientos de **Camisa mujer**, Odoo envía `35` al tag de Camisa hombre y, por separado, el total de Camisa mujer a su propio tag. No se combinan productos distintos en un mismo tag.
@@ -354,22 +354,21 @@ En los traslados por lote se usa el mismo código visual que en los albaranes in
 
 ### 6.4. Función de los botones
 
-| Botón recibido | Acción en Odoo |
-|---:|---|
-| `0` | Confirma la operación pendiente. Valida albaranes/lotes cuando existen, pone `Pickup Quantity` a cero y actualiza el tag. |
-| `1` | Incrementa el stock del producto en `1`. |
-| `3` | Incrementa el stock del producto en `3`. |
+| Botón físico | Callback | Acción en Odoo |
+|---|---:|---|
+| Inferior | `result = 0` | Confirma la operación pendiente. Valida albaranes/lotes cuando existen, pone `Pickup Quantity` a cero y actualiza el tag. |
+| Central | `result = 1` | Incrementa el stock del producto en `1`. |
+| Superior | `result = 3` | Incrementa el stock del producto en `3`. |
 
 Los botones `1` y `3` realizan ajustes directos sobre la primera ubicación interna encontrada por Odoo. Deben utilizarse solo si ese comportamiento coincide con la operativa del almacén.
 
-El tag físico tiene un LED RGB y tres botones colocados verticalmente. La numeración física indicada por el fabricante y los valores `result` recibidos por Odoo son conceptos diferentes:
+El tag físico tiene un LED RGB y tres botones colocados verticalmente:
 
 ![Distribución real del LED y de los tres botones físicos](images/15-esquema-botones-tag-real.png)
 
-> Antes de operar con stock real, comprobar qué botón físico genera cada valor `result`. El código procesa `result = 0`, `1` y `3`, mientras que la documentación visual del tag denomina los controles `button1`, `button2` y `button3`.
-
-- Botón `1`: suma exactamente una unidad al stock de Odoo.
-- Botón `3`: suma exactamente tres unidades al stock de Odoo.
+- Botón central: suma exactamente una unidad al stock de Odoo.
+- Botón superior: suma exactamente tres unidades al stock de Odoo.
+- Botón inferior: confirma la operación pendiente.
 - Tras cualquiera de estas pulsaciones, el módulo actualiza el stock y vuelve a enviar la pantalla del tag con el LED verde.
 - Estos callbacks no sustituyen la validación de una recepción o entrega. Para confirmar una operación pendiente Odoo espera siempre `result = 0`.
 
@@ -494,7 +493,7 @@ Normalmente significa que la MAC no se encontró o que se produjo una excepción
 
 ### La cantidad o el stock no son los esperados
 
-- Comprobar si existen varios movimientos pendientes del mismo producto: el botón `0` busca todos los movimientos confirmados, asignados o parcialmente disponibles de ese producto.
+- Comprobar si existen varios movimientos pendientes del mismo producto: el botón inferior (`result = 0`) busca todos los movimientos confirmados, asignados o parcialmente disponibles de ese producto.
 - Revisar el tipo de operación: entrada genera valor negativo; salida genera valor positivo.
 - Verificar la ubicación interna usada por los ajustes directos de los botones `1` y `3`.
 - Probar primero con un único producto, un único albarán y una base de pruebas.

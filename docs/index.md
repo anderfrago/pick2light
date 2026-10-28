@@ -38,6 +38,12 @@ El tag tiene una pantalla, un LED RGB y tres botones físicos:
 
 ![Partes del tag Pick-to-Light](images/15-esquema-botones-tag-real.png)
 
+| Posición del botón | Función |
+|---|---|
+| Superior | Aumenta el stock en 3 unidades. |
+| Central | Aumenta el stock en 1 unidad. |
+| Inferior | Confirma la recepción, la entrega o el producto del lote. |
+
 La pantalla de trabajo solo necesita mostrar:
 
 - **Producto**: artículo que debes mover.
@@ -52,7 +58,7 @@ La pantalla de trabajo solo necesita mostrar:
 | Verde | Entrega o salida | Recoger mercancía del almacén. |
 | Apagado | No hay tarea pendiente | No mover mercancía. |
 
-> Los nombres de los botones físicos y los números que recibe Odoo pueden ser diferentes. Utiliza únicamente el botón de confirmación que haya indicado el profesor o responsable del equipo.
+> Para terminar una operación se utiliza el botón inferior. Los botones superior y central modifican el stock y solo deben pulsarse cuando el profesor autorice un ajuste.
 
 ## 3. Antes de empezar
 
@@ -115,7 +121,7 @@ Una recepción significa que llega mercancía y hay que **colocarla en el almac�
 3. Lee la **cantidad pendiente**. En las recepciones aparece con signo negativo; por ejemplo, `-10` significa colocar 10 unidades.
 4. Cuenta y coloca las unidades.
 5. Vuelve a contarlas antes de confirmar.
-6. Pulsa una sola vez el botón de confirmación indicado por el profesor.
+6. Pulsa una sola vez el **botón inferior** para confirmar.
 7. Comprueba que la cantidad queda a cero y que el LED se apaga.
 
 ![Tag durante una recepción](images/13-mockup-tag-recepcion-real.png)
@@ -142,7 +148,7 @@ Una entrega significa que la mercancía sale y hay que **recogerla del almacén*
 3. Lee la cantidad pendiente.
 4. Cuenta y retira esa cantidad.
 5. Vuelve a contar antes de confirmar.
-6. Pulsa una sola vez el botón de confirmación indicado por el profesor.
+6. Pulsa una sola vez el **botón inferior** para confirmar.
 7. Comprueba que la cantidad queda a cero y que el LED se apaga.
 
 ![Tag durante una entrega](images/14-mockup-tag-entrega-real.png)
